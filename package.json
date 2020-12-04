@@ -1,0 +1,16 @@
+{
+   "name": "tacton",
+   "version": "1.0.0",
+   "description": "",
+   "main": "cli.js",
+   "bin": "./cli.js",
+   "preferGlobal": true,
+   "scripts": {},
+   "author": "Gregory Harder",
+   "license": "ISC",
+   "dependencies": {
+      "commander": "^6.2.0",
+      "inquirer": "^7.3.3",
+      "xml-js": "^1.6.11"
+   }
+}
