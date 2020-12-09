@@ -8,20 +8,33 @@ const { read } = require('./lib/data.js');
 // Local Dependencies
 const data = require('./lib/data.js');
 const tcx = require('./lib/tcx.js');
+const { version } = require('./package.json');
 
 // Instantiate the program
-program.version('1.0.1').description('Tacton CLI Tools');
+program.version(version).description('Tacton CLI Tools');
 
 /** A list of all the files in the directory */
-const dir = data.list();
+const allList = data.list();
+
+/** A list of all the data files in the directory */
+const dataList = data.listData();
 
 /** The main file selection prompt */
 const selectFile = {
    type: 'list',
    name: 'file',
    message: 'Select a file:',
-   choices: dir,
-   pageSize: dir.length,
+   choices: allList,
+   pageSize: allList.length,
+};
+
+/** The data file selection prompt */
+const selectDataFile = {
+   type: 'list',
+   name: 'file',
+   message: 'Select a file:',
+   choices: dataList,
+   pageSize: dataList.length,
 };
 
 /**
@@ -53,27 +66,15 @@ const getFileName = {
 //    .command('dev')
 //    .description('development only command')
 //    .action(() => {
-//       // let readData = data.read('safety_model.tcx');
-
-//       // readData = tcx.toJs(readData)['model-data'].model['component-classes']['component-class'];
-
-//       // readData = readData[0].features.feature;
-
-//       // console.log(readData);
-
-//       let readData = data.read('blank.tcx');
-
-//       readData = tcx.toJs(readData)['model-data'].model['component-classes']['component-class'];
-
-//       console.log(readData.components.component);
+//       console.log(version);
 //    });
 
-// The main process to convert a class to a domain
+// The process to convert a class to a domain
 program
    .command('class-to-domain')
    .description('convert classes to domains')
    .action(() => {
-      if (dir.length === 0) {
+      if (allList.length === 0) {
          console.log('Error: no .tcx files in directory');
          return;
       }
@@ -112,12 +113,12 @@ program
       });
    });
 
-// The main process to convert a domain to a class
+// The process to convert a domain to a class
 program
    .command('domain-to-class')
    .description('convert domains to classes')
    .action(() => {
-      if (dir.length === 0) {
+      if (allList.length === 0) {
          console.log('Error: no .tcx files in directory');
          return;
       }
@@ -155,6 +156,37 @@ program
 
             data.create(fileName, model);
          });
+      });
+   });
+
+// The process to create a backup of a files domains
+program
+   .command('backup-domain')
+   .description('backup domains from a data file')
+   .action(() => {
+      if (dataList.length === 0) {
+         console.log('Error: no _data.tcx files in directory');
+         return;
+      }
+
+      prompt(selectDataFile).then((res) => {
+         const { file } = res;
+
+         let fileName = file.replace('_data', '_domain_backup');
+
+         fileName = fileName.substring(0, fileName.length - 4);
+
+         if (allList.includes(`${fileName}.tcx`)) {
+            data.delete(fileName, false);
+         }
+
+         const readData = data.read(file);
+
+         const namedDomains = tcx.getDomains(readData);
+
+         const model = tcx.fromObj({ namedDomains });
+
+         data.create(fileName, model);
       });
    });
 
