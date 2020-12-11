@@ -19,22 +19,18 @@ const allList = data.list();
 /** A list of all the data files in the directory */
 const dataList = data.listData();
 
-/** The main file selection prompt */
-const selectFile = {
-   type: 'list',
-   name: 'file',
-   message: 'Select a file:',
-   choices: allList,
-   pageSize: allList.length,
-};
-
-/** The data file selection prompt */
-const selectDataFile = {
-   type: 'list',
-   name: 'file',
-   message: 'Select a file:',
-   choices: dataList,
-   pageSize: dataList.length,
+/**
+ * Creates a file selection prompt
+ * @param {string[]} choices The array of choices
+ */
+const selectFile = (choices, message = 'Select a file:') => {
+   return {
+      type: 'list',
+      name: 'file',
+      message,
+      choices: choices,
+      pageSize: choices.length,
+   };
 };
 
 /**
@@ -62,13 +58,6 @@ const getFileName = {
    validate: (res) => (res.length < 1 ? 'Error: no file name entered' : true),
 };
 
-// program
-//    .command('dev')
-//    .description('development only command')
-//    .action(() => {
-//       console.log(version);
-//    });
-
 // The process to convert a class to a domain
 program
    .command('class-to-domain')
@@ -79,7 +68,7 @@ program
          return;
       }
 
-      prompt(selectFile).then((res) => {
+      prompt(selectFile(allList)).then((res) => {
          const { file } = res;
 
          let readData = data.read(file);
@@ -123,7 +112,7 @@ program
          return;
       }
 
-      prompt(selectFile).then((res) => {
+      prompt(selectFile(allList)).then((res) => {
          const { file } = res;
 
          let readData = data.read(file);
@@ -169,7 +158,7 @@ program
          return;
       }
 
-      prompt(selectDataFile).then((res) => {
+      prompt(selectFile(dataList)).then((res) => {
          const { file } = res;
 
          let fileName = file.replace('_data', '_domain_backup');
@@ -187,6 +176,31 @@ program
          const model = tcx.fromObj({ namedDomains });
 
          data.create(fileName, model);
+      });
+   });
+
+program
+   .command('restore-domain')
+   .description('restore the domains from a backup file')
+   .action(() => {
+      prompt(selectFile(dataList)).then((res) => {
+         let { file } = res;
+
+         const backupFile = file.replace('_data', '_domain_backup');
+
+         const readData = data.read(file);
+         const backup = data.read(backupFile);
+
+         const componentClasses = tcx.toJs(readData)['model-data'].model['component-classes']['component-class'];
+         const namedDomains = tcx.toJs(backup)['model-data'].model['named-domains']['named-domain'];
+
+         const model = tcx.fromObj({ namedDomains, componentClasses });
+
+         file = file.substring(0, file.length - 4);
+
+         data.delete(file, false);
+
+         data.create(file, model);
       });
    });
 
