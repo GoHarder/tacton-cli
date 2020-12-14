@@ -18,10 +18,11 @@ npm unlink
 ```
 
 ## Commands
-| Command         | Description                            |
-| --------------- | -------------------------------------- |
-| help            | open the help menu                     |
-| class-to-domain | convert classes to domains             |
-| domain-to-class | convert domains to classes             |
-| backup-domain   | backup domains from a _data.tcx file   |
-| restore-domain  | restore the domains from a backup file |
+| Command         | Description                             |
+| --------------- | --------------------------------------- |
+| help            | open the help menu                      |
+| class-to-domain | convert classes to domains              |
+| domain-to-class | convert domains to classes              |
+| backup          | backup tcx file data                    |
+| restore         | restore tcx file data                   |
+| watch           | watches a directory and maintains files |

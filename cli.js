@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+
 // NPM Dependencies
 const program = require('commander');
 const { prompt } = require('inquirer');
-const { read } = require('./lib/data.js');
 
 // Local Dependencies
 const data = require('./lib/data.js');
 const tcx = require('./lib/tcx.js');
+const backup = require('./lib/backup.js');
 const { version } = require('./package.json');
 
 // Instantiate the program
@@ -16,8 +18,11 @@ program.version(version).description('Tacton CLI Tools');
 /** A list of all the files in the directory */
 const allList = data.list();
 
-/** A list of all the data files in the directory */
-const dataList = data.listData();
+/** A list of all the tcx files in the directory */
+const tcxList = data.listFile(allList, 'tcx');
+
+/** A list of all the json files in the directory */
+const jsonList = data.listFile(allList, 'json');
 
 /**
  * Creates a file selection prompt
@@ -63,12 +68,12 @@ program
    .command('class-to-domain')
    .description('convert classes to domains')
    .action(() => {
-      if (allList.length === 0) {
-         console.log('Error: no .tcx files in directory');
+      if (tcxList.length === 0) {
+         console.log('\x1b[31m%s\x1b[0m', `\nError: a tcx file does not exist`);
          return;
       }
 
-      prompt(selectFile(allList)).then((res) => {
+      prompt(selectFile(tcxList)).then((res) => {
          const { file } = res;
 
          let readData = data.read(file);
@@ -97,7 +102,9 @@ program
 
             const model = tcx.fromObj({ namedDomains });
 
-            data.create(fileName, model);
+            data.create(`${fileName}.tcx`, model);
+
+            console.log('\x1b[32m%s\x1b[0m', `\n${fileName}.tcx was created`);
          });
       });
    });
@@ -107,12 +114,12 @@ program
    .command('domain-to-class')
    .description('convert domains to classes')
    .action(() => {
-      if (allList.length === 0) {
-         console.log('Error: no .tcx files in directory');
+      if (tcxList.length === 0) {
+         console.log('\x1b[31m%s\x1b[0m', `\nError: a tcx file does not exist`);
          return;
       }
 
-      prompt(selectFile(allList)).then((res) => {
+      prompt(selectFile(tcxList)).then((res) => {
          const { file } = res;
 
          let readData = data.read(file);
@@ -143,64 +150,55 @@ program
 
             const model = tcx.fromObj({ componentClasses });
 
-            data.create(fileName, model);
+            data.create(`${fileName}.tcx`, model);
+
+            console.log('\x1b[32m%s\x1b[0m', `\n${fileName}.tcx was created`);
          });
       });
    });
 
-// The process to create a backup of a files domains
 program
-   .command('backup-domain')
-   .description('backup domains from a data file')
+   .command('backup')
+   .description('backup tcx file data')
    .action(() => {
-      if (dataList.length === 0) {
-         console.log('Error: no _data.tcx files in directory');
-         return;
-      }
-
-      prompt(selectFile(dataList)).then((res) => {
+      prompt(selectFile(tcxList)).then((res) => {
          const { file } = res;
 
-         let fileName = file.replace('_data', '_domain_backup');
-
-         fileName = fileName.substring(0, fileName.length - 4);
-
-         if (allList.includes(`${fileName}.tcx`)) {
-            data.delete(fileName, false);
-         }
-
-         const readData = data.read(file);
-
-         const namedDomains = tcx.getDomains(readData);
-
-         const model = tcx.fromObj({ namedDomains });
-
-         data.create(fileName, model);
+         backup.create(file);
       });
    });
 
 program
-   .command('restore-domain')
-   .description('restore the domains from a backup file')
+   .command('restore')
+   .description('restore tcx file data')
    .action(() => {
-      prompt(selectFile(dataList)).then((res) => {
-         let { file } = res;
+      prompt(selectFile(tcxList)).then((res) => {
+         const { file } = res;
 
-         const backupFile = file.replace('_data', '_domain_backup');
+         backup.restore(file);
+      });
+   });
 
-         const readData = data.read(file);
-         const backup = data.read(backupFile);
+program
+   .command('watch')
+   .description('watches a directory and maintains files')
+   .action(() => {
+      let wait = false;
 
-         const componentClasses = tcx.toJs(readData)['model-data'].model['component-classes']['component-class'];
-         const namedDomains = tcx.toJs(backup)['model-data'].model['named-domains']['named-domain'];
+      fs.watch(process.cwd(), { recursive: true }, (event, fileName) => {
+         if (fileName) {
+            if (wait) return;
 
-         const model = tcx.fromObj({ namedDomains, componentClasses });
+            wait = setTimeout(() => {
+               wait = false;
+            }, 100);
 
-         file = file.substring(0, file.length - 4);
+            console.log(`${fileName} changed`);
 
-         data.delete(file, false);
-
-         data.create(file, model);
+            // NOTE: 12-11-2020 4:22 PM
+            // Read the file header when the change event fires
+            // If it says excel made the changes then restore the backup
+         }
       });
    });
 
