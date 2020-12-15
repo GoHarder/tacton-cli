@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Node Dependencies
 const fs = require('fs');
 
 // NPM Dependencies
@@ -20,9 +21,6 @@ const allList = data.list();
 
 /** A list of all the tcx files in the directory */
 const tcxList = data.listFile(allList, 'tcx');
-
-/** A list of all the json files in the directory */
-const jsonList = data.listFile(allList, 'json');
 
 /**
  * Creates a file selection prompt
@@ -183,22 +181,39 @@ program
    .command('watch')
    .description('watches a directory and maintains files')
    .action(() => {
-      let wait = false;
+      const tcxFiles = data.listTCX();
 
-      fs.watch(process.cwd(), { recursive: true }, (event, fileName) => {
-         if (fileName) {
-            if (wait) return;
+      tcxFiles.forEach((file) => {
+         const backupFileName = file.replace('.tcx', '_backup.json');
 
-            wait = setTimeout(() => {
-               wait = false;
-            }, 100);
-
-            console.log(`${fileName} changed`);
-
-            // NOTE: 12-11-2020 4:22 PM
-            // Read the file header when the change event fires
-            // If it says excel made the changes then restore the backup
+         if (!data.exist(backupFileName)) {
+            backup.create(file);
          }
+      });
+
+      data.watch((fileName) => {
+         const backupFileName = fileName.replace('.tcx', '_backup.json');
+
+         setTimeout(() => {
+            let fileData = data.read(fileName);
+
+            fileData = tcx.toJs(fileData);
+
+            const editor = fileData['model-data'].identification['edited-with']._text;
+
+            if (editor.match(/^TCStudio/gm)) {
+               if (data.exist(backupFileName)) {
+                  data.delete(backupFileName);
+               }
+               backup.create(fileName, 'updated');
+            }
+
+            if (editor.match(/Excel/gm)) {
+               backup.restore(fileName, false);
+               data.delete(backupFileName);
+               backup.create(fileName, 'updated');
+            }
+         }, 250);
       });
    });
 
