@@ -9,6 +9,10 @@
 
 ## Install
 ```shell
+npm install
+```
+
+```shell
 npm link
 ```
 
